@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Update repository
 echo ""
@@ -17,7 +17,7 @@ apt upgrade -y
 echo ""
 echo "*** Installing necessary packages ***"
 echo ""
-apt -y install apt-transport-https openjdk-8-jre-headless uuid-runtime pwgen
+apt -y install apt-transport-https openjdk-8-jre-headless uuid-runtime pwgen net-tools
 
 # Install Elasticsearch locally
 echo ""
