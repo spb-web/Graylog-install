@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 function isRoot () {
 	if [ "$EUID" -ne 0 ]; then
@@ -81,4 +81,5 @@ fi
 get_graylog_ip
 graylog_ip=$(/sbin/ifconfig ${int_name} | grep "inet " | awk -F' ' '{print $2}' | awk '{print $1}')
 sed -i "/^rest_listen_uri/c\rest_listen_uri = http://${graylog_ip}:9000/api/" ${file_path}
+sed -i "/^#web_listen_uri/c\web_listen_uri = http://${graylog_ip}:9000/" ${file_path}
 sed -i "/^web_listen_uri/c\web_listen_uri = http://${graylog_ip}:9000/" ${file_path}
