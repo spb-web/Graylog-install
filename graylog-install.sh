@@ -1,5 +1,65 @@
 #!/usr/bin/env bash
 
+function isRoot () {
+	if [ "$EUID" -ne 0 ]; then
+		echo "Sorry, you need to run this as root"
+		exit 1
+	fi
+}
+
+function checkOS () {
+	if [[ -e /etc/debian_version ]]; then
+		source /etc/os-release
+
+		if [[ "$ID" == "ubuntu" ]];then
+			OS="ubuntu"
+			if [[ ! $VERSION_ID =~ (16.04|18.04) ]]; then
+				echo "⚠️ Your version of Ubuntu is not supported."
+				echo ""
+				echo "However, if you're using Ubuntu > 17 or beta, then you can continue."
+				echo "Keep in mind they are not supported, though."
+				echo ""
+				until [[ $CONTINUE =~ (y|n) ]]; do
+					read -rp "Continue? [y/n]: " -e CONTINUE
+				done
+				if [[ "$CONTINUE" = "n" ]]; then
+					exit 1
+				fi
+			fi
+		fi
+	else
+		echo "Looks like you aren't running this installer on a Ubuntu Linux system"
+		exit 1
+	fi
+}
+
+isRoot
+checkOS
+
+# Install Elasticsearch locally
+echo ""
+echo "Would you like Elasticsearch installed locally?"
+echo "   1) Yes"
+echo "   2) No"
+
+until [[ "$INSTALL_ELASTICSEARCH" =~ ^[1-2]$ ]]; do
+  read -rp "Select an option [1-2]: " -e -i 1 INSTALL_ELASTICSEARCH
+done
+
+# Install MongoDB locally
+echo ""
+echo "Would you like MongoDB installed locally?"
+echo "   1) Yes"
+echo "   2) No"
+
+until [[ "$INSTALL_MONGODB" =~ ^[1-2]$ ]]; do
+  read -rp "Select an option [1-2]: " -e -i 1 INSTALL_MONGODB
+done
+
+echo ""
+echo "Okay, that was all I needed. We are ready to setup your Graylog server now."
+read -n1 -r -p "Press any key to continue..."
+
 # Update repository
 echo ""
 echo "*** Running apt update command ***"
@@ -19,44 +79,20 @@ echo "*** Installing necessary packages ***"
 echo ""
 apt -y install apt-transport-https openjdk-8-jre-headless uuid-runtime pwgen net-tools
 
-# Install Elasticsearch locally
-echo ""
-echo "Would you like Elasticsearch installed locally?"
-echo "   1) Yes"
-echo "   2) No"
-
-until [[ "$INSTALL_ELASTICSEARCH" =~ ^[1-2]$ ]]; do
-  read -rp "Select an option [1-2]: " -e -i 1 INSTALL_ELASTICSEARCH
-done
-
 if [[ $INSTALL_ELASTICSEARCH = "1" ]]; then
   echo ""
   echo "*** Installing Elasticsearch ***"
   echo ""
 
-  wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.5.1.deb
-  wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.5.1.deb.sha512
-  shasum -a 512 -c elasticsearch-6.5.1.deb.sha512
-  dpkg -i elasticsearch-6.5.1.deb
-
-  sed -i 's|cluster.name: elasticsearch$|cluster.name: graylog|' /etc/elasticsearch/elasticsearch.yml
+  sudo dpkg -i elasticsearch-5.3.3.deb
+  sudo /etc/init.d/elasticsearch start
 
   systemctl daemon-reload
   systemctl enable elasticsearch.service
   systemctl restart elasticsearch.service
 fi
 
-# Install MongoDB locally
-echo ""
-echo "Would you like MongoDB installed locally?"
-echo "   1) Yes"
-echo "   2) No"
-
-until [[ "$INSTALL_MONGODB" =~ ^[1-2]$ ]]; do
-  read -rp "Select an option [1-2]: " -e -i 1 INSTALL_MONGODB
-done
-
-if [[ $INSTALL_ELASTICSEARCH = "1" ]]; then
+if [[ $INSTALL_MONGODB = "1" ]]; then
   echo ""
   echo "*** Installing MongoDB ***"
   echo ""
@@ -90,8 +126,7 @@ sh graylog-conf.sh
 
 # Remove unnecessary files created during script
 rm "graylog-2.4-repository_latest.deb"
-rm "elasticsearch-6.5.1.deb"
-rm "elasticsearch-6.5.1.deb.sha512"
+# rm "elasticsearch-5.3.3.deb"
 
 # Start Elasticsearch & Graylog Server
 echo ""
@@ -103,3 +138,16 @@ echo ""
 echo "*** Starting Graylog ***"
 echo ""
 systemctl start graylog-server.service
+
+echo ""
+echo "OS: $ID $VERSION_ID"
+echo ""
+if [[ $INSTALL_ELASTICSEARCH = "1" ]]; then
+  echo "[*] Elasticsearch installed"
+fi
+
+if [[ $INSTALL_MONGODB = "1" ]]; then
+  echo "[*] MongoDB installed"
+fi
+
+echo "[*] Graylog installed"

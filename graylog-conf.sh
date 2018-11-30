@@ -1,5 +1,14 @@
 #!/bin/sh
 
+function isRoot () {
+	if [ "$EUID" -ne 0 ]; then
+		echo "Sorry, you need to run this as root"
+		exit 1
+	fi
+}
+
+isRoot
+
 # Copy current graylog conf file to temp file
 file_path='/etc/graylog/server/server.conf'
 
